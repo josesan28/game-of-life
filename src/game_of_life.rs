@@ -70,7 +70,8 @@ impl GameOfLife {
                 } else {
                     color_dead
                 };
-                framebuffer.set_pixel(x, y, color);
+                framebuffer.set_current_color(color);
+                framebuffer.set_pixel(x, y);
             }
         }
     }

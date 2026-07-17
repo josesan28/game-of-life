@@ -1,95 +1,58 @@
+mod framebuffer;
+mod line;
+mod game_of_life;
+mod patterns;
+
 use raylib::prelude::*;
 use raylib::consts::TraceLogLevel;
-use std::thread;
 use std::time::Duration;
+use std::thread;
 
-mod framebuffer;
 use framebuffer::Framebuffer;
+use game_of_life::GameOfLife;
+use patterns::*;
 
-mod line;
-use line::line;
+const WINDOW_WIDTH: i32 = 800;
+const WINDOW_HEIGHT: i32 = 600;
+const GRID_WIDTH: u32 = 100;
+const GRID_HEIGHT: u32 = 100;
 
 fn main() {
-    let window_width = 800;
-    let window_height = 600;
-
     let (mut window, raylib_thread) = raylib::init()
-        .size(window_width, window_height)
-        .title("Movimiento")
+        .size(WINDOW_WIDTH, WINDOW_HEIGHT)
+        .title("Conway's Game of Life")
         .log_level(TraceLogLevel::LOG_WARNING)
         .build();
 
-    let mut framebuffer = Framebuffer::new(window_width as u32, window_height as u32, Color::new(50, 50, 100, 255));
-    framebuffer.set_background_color(Color::new(50, 50, 100, 255));
+    let mut framebuffer = Framebuffer::new(
+        GRID_WIDTH,
+        GRID_HEIGHT,
+        Color::new(0, 0, 0, 255), // fondo negro
+    );
 
-    let mut translate_x = 0.0;
-    let mut translate_y = 0.0;
-    let mut speed = 2.0;
-    let mut direction_x = 1.0;
-    let mut direction_y = 1.0;
+    let mut game = GameOfLife::new(GRID_WIDTH, GRID_HEIGHT);
 
-    // Variable para screenshot
-    let mut screenshot_counter = 1;
+    // Cargar patrones
+    add_glider(&mut game, 10, 10);
+    add_blinker(&mut game, 30, 30);
+    add_toad(&mut game, 50, 20);
+    // Puedes añadir más
 
-    // Variables para FPS
-    //let mut frame_count = 0;
-    //let mut fps_timer = std::time::Instant::now();
+    let frame_delay = Duration::from_millis(100); // sin mut porque no cambia
 
     while !window.window_should_close() {
-        // Limpiar framebuffer
+        if window.is_key_pressed(KeyboardKey::KEY_S) {
+            framebuffer.render_to_file("screenshot.png");
+            println!("Screenshot guardado como screenshot.png");
+        }
+
+        game.next_generation();
+
         framebuffer.clear();
-
-        // Actualizar posición según dirección y velocidad
-        translate_x += speed * direction_x;
-        translate_y += speed * direction_y;
-
-        // Rebotar en los bordes
-        let margin = 50.0;
-        let object_width = 300.0;
-        let object_height = 300.0;
-        let left = margin + translate_x;
-        let right = margin + translate_x + object_width;
-        let top = margin + translate_y;
-        let bottom = margin + translate_y + object_height;
-
-        if right >= window_width as f32 || left <= 0.0 {
-            direction_x *= -1.0;
-        }
-        if bottom >= window_height as f32 || top <= 0.0 {
-            direction_y *= -1.0;
-        }
-
-        render(&mut framebuffer, translate_x, translate_y);
+        game.render_to(&mut framebuffer, Color::WHITE, Color::BLACK);
 
         framebuffer.swap_buffers(&mut window, &raylib_thread);
 
-        if window.is_key_pressed(KeyboardKey::KEY_S) {
-            let filename = format!("screenshot_{:03}.png", screenshot_counter);
-            framebuffer.render_to_file(&filename);
-            println!("Screenshot guardado: {}", filename);
-            screenshot_counter += 1;
-        }
-
-        // Control de FPS
-        thread::sleep(Duration::from_millis(16));
+        thread::sleep(frame_delay);
     }
-}
-
-fn render(
-    framebuffer: &mut Framebuffer,
-    translate_x: f32,
-    translate_y: f32,
-) {
-    framebuffer.set_current_color(Color::GREEN);
-    line(
-        framebuffer,
-        Vector2::new(50.0 + translate_x, 50.0 + translate_y),
-        Vector2::new(350.0 + translate_x, 350.0 + translate_y),
-    );
-    framebuffer.set_current_color(Color::RED);
-    line(
-        framebuffer,
-        Vector2::new(350.0 + translate_x, 50.0 + translate_y),
-        Vector2::new(50.0 + translate_x, 350.0 + translate_y),
-    );
 }
